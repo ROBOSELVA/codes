@@ -1,69 +1,46 @@
-from flask import Flask, request, jsonify
 import nltk
-from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-import numpy as np
+from nltk.corpus import stopwords
 import random
-import string
 
-app = Flask(__name__)
-
-# Preprocessing
-lemmatizer = WordNetLemmatizer()
-
-def tokenize(text):
-    return word_tokenize(text.lower())
-
-def lemmatize(tokens):
-    return [lemmatizer.lemmatize(token) for token in tokens]
-
-def remove_punctuation(text):
-    return ''.join([char for char in text if char not in string.punctuation])
+# Download NLTK resources
+nltk.download('punkt')
+nltk.download('stopwords')
 
 # Define responses
 responses = {
-    "greeting": ["Hello!", "Hi there!", "Hey! How can I assist you?"],
-    "goodbye": ["Goodbye!", "See you later!", "Take care!"],
-    "thanks": ["You're welcome!", "No problem!", "Anytime!"],
-    "default": ["I'm not sure I understand.", "Could you please rephrase that?", "Sorry, I didn't catch that."]
+    "hi": ["Hello!", "Hi there!", "Hey!"],
+    "how are you": ["I'm doing well, thanks!", "I'm good, how about you?"],
+    "bye": ["Goodbye!", "See you later!", "Bye!"],
+    "default": ["Sorry, I didn't understand that.", "Can you please repeat that?"]
 }
 
-# Define intent classification rules
-intents = {
-    "greeting": ["hello", "hi", "hey", "howdy"],
-    "goodbye": ["goodbye", "bye", "see you", "take care"],
-    "thanks": ["thanks", "thank you"],
-}
+# Tokenize input and remove stopwords
+def process_input(input_text):
+    tokens = word_tokenize(input_text)
+    tokens = [word.lower() for word in tokens if word.isalpha()]
+    tokens = [word for word in tokens if word not in stopwords.words("english")]
+    return tokens
 
-# Define responses to specific intents
-def get_response(intent):
-    if intent == "greeting":
-        return random.choice(responses["greeting"])
-    elif intent == "goodbye":
-        return random.choice(responses["goodbye"])
-    elif intent == "thanks":
-        return random.choice(responses["thanks"])
-    else:
-        return random.choice(responses["default"])
+# Get response based on input
+def get_response(input_text):
+    tokens = process_input(input_text)
+    for token in tokens:
+        if token in responses:
+            return random.choice(responses[token])
+    return random.choice(responses["default"])
 
-# Define function to classify user input
-def classify_intent(text):
-    tokens = tokenize(text)
-    lemmas = lemmatize(tokens)
-    for intent, keywords in intents.items():
-        for word in lemmas:
-            if word in keywords:
-                return intent
-    return "default"
+# Main loop
+def main():
+    print("Welcome to the NLTK Chatbot!")
+    print("Type 'bye' to exit.")
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() == 'bye':
+            print(get_response(user_input))
+            break
+        else:
+            print("Bot:", get_response(user_input))
 
-# Define route for chatbot API
-@app.route('/chat', methods=['POST'])
-def chat():
-    data = request.get_json()
-    user_message = data['message']
-    intent = classify_intent(user_message)
-    bot_response = get_response(intent)
-    return jsonify({"message": bot_response})
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    main()
